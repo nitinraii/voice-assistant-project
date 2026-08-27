@@ -16,16 +16,65 @@ def index():
 
 @app.route('/speech-to-text', methods=['POST'])
 def speech_to_text_route():
-    return None
+    print("processing speech-to-text")
+
+    # Browser se aayi audio
+    audio_binary = request.data
+
+    # Watson Speech-to-Text call
+    text = speech_to_text(audio_binary)
+
+    # Browser ko JSON me converted text bhejo
+    response = app.response_class(
+        response=json.dumps({"text": text}),
+        status=200,
+        mimetype="application/json"
+    )
+
+    print(response)
+    print(response.data)
+    return response
 
 
 @app.route('/process-message', methods=['POST'])
 def process_prompt_route():
-    response = app.response_class(
-        response=json.dumps({"openaiResponseText": None, "openaiResponseSpeech": None}),
-        status=200,
-        mimetype='application/json'
+   # User ka text aur selected voice
+    user_message = request.json["userMessage"]
+    print("user_message:", user_message)
+
+    voice = request.json["voice"]
+    print("voice:", voice)
+
+    # OpenAI se text response
+    openai_response_text = openai_process_message(user_message)
+
+    # Empty lines remove karo
+    openai_response_text = os.linesep.join(
+        [line for line in openai_response_text.splitlines() if line]
     )
+
+    # Text ko speech/WAV audio me badlo
+    openai_response_speech = text_to_speech(
+        openai_response_text,
+        voice
+    )
+
+    # Audio ko JSON me bhejne layak base64 text me convert karo
+    openai_response_speech = base64.b64encode(
+        openai_response_speech
+    ).decode("utf-8")
+
+    # Browser ko text + audio dono bhejo
+    response = app.response_class(
+        response=json.dumps({
+            "openaiResponseText": openai_response_text,
+            "openaiResponseSpeech": openai_response_speech
+        }),
+        status=200,
+        mimetype="application/json"
+    )
+
+    print(response)
     return response
 
 
